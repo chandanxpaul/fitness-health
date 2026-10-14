@@ -1,4 +1,4 @@
-# Fitness Health — TDEE Calculator
+# A simple guide to Health & Fitness
 
 A static single-page app that estimates **BMR**, **TDEE**, and a suggested **calorie & macro plan**. Choose **Mifflin–St Jeor** (default) or revised **Harris–Benedict** (Roza & Shizgal, 1984).
 
@@ -61,6 +61,8 @@ Requires a calculated TDEE (activity selected).
 - **Carbs:** remaining calories ÷ 4. If below the common 130 g RDA, a soft note is shown (value is not forced up).
 
 Energy constants: protein/carbs 4 kcal/g, fat 9 kcal/g.
+
+**Disclaimer:** Suggested calories and macros are estimates only. They are not personalized medical advice and can be adjusted according to medical best practices or guidance from a qualified professional.
 
 ## Features
 

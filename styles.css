@@ -212,6 +212,18 @@ body {
   animation-delay: 0.24s;
 }
 
+.disclaimer {
+  margin: -0.35rem 0 1rem;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
 .segmented-goals {
   grid-template-columns: repeat(3, 1fr);
 }
