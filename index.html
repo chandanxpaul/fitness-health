@@ -159,7 +159,7 @@
             </div>
 
             <label class="field">
-              <span>Activity level <em>(optional for TDEE)</em></span>
+              <span>Activity level <em>(needed for TDEE &amp; calorie plan)</em></span>
               <select id="activity" name="activity">
                 <option value="">Select activity level…</option>
                 <option value="sedentary">Sedentary — little or no exercise</option>
@@ -207,6 +207,10 @@
               <h3>Calculation details</h3>
               <ol id="breakdown-list"></ol>
             </div>
+
+            <p id="plan-jump" class="plan-jump" hidden>
+              <a href="#calorie-plan">Continue to calorie &amp; macro plan ↓</a>
+            </p>
           </div>
         </section>
 
@@ -249,12 +253,140 @@
             </table>
           </div>
         </section>
+
+        <section
+          id="calorie-plan"
+          class="panel plan-panel"
+          aria-labelledby="plan-heading"
+        >
+          <h2 id="plan-heading">Calorie &amp; macro plan</h2>
+
+          <div id="plan-locked" class="results-empty">
+            <p>
+              Calculate BMR with an activity level selected to unlock a suggested
+              daily calorie and macro plan.
+            </p>
+          </div>
+
+          <div id="plan-body" hidden>
+            <p class="table-intro">
+              Targets use your current TDEE. Adjust goal, protein, and fat to taste —
+              carbs fill the remaining calories.
+            </p>
+
+            <fieldset>
+              <legend>Goal</legend>
+              <div class="segmented segmented-goals" role="radiogroup" aria-label="Weight goal">
+                <label class="segment">
+                  <input type="radio" name="goal" value="maintain" checked />
+                  <span>
+                    Maintain
+                    <small>TDEE × 1.0</small>
+                  </span>
+                </label>
+                <label class="segment">
+                  <input type="radio" name="goal" value="lose" />
+                  <span>
+                    Lose
+                    <small>TDEE × 0.9</small>
+                  </span>
+                </label>
+                <label class="segment">
+                  <input type="radio" name="goal" value="gain" />
+                  <span>
+                    Gain
+                    <small>TDEE × 1.1</small>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+
+            <div id="bmi-summary" class="bmi-summary" aria-live="polite"></div>
+            <div id="goal-warning" class="callout callout-warn" hidden role="status"></div>
+
+            <div class="field-grid plan-controls">
+              <label class="field">
+                <span>Protein (g / kg)
+                  <em id="protein-default-hint"></em>
+                </span>
+                <input
+                  id="protein-per-kg"
+                  type="number"
+                  inputmode="decimal"
+                  min="1.2"
+                  max="1.6"
+                  step="0.05"
+                  value="1.2"
+                />
+                <span class="field-hint">Range 1.2–1.6 g per kg body weight</span>
+              </label>
+
+              <label class="field">
+                <span>Fat (% of calories)
+                  <em id="fat-default-hint"></em>
+                </span>
+                <input
+                  id="fat-percent"
+                  type="number"
+                  inputmode="decimal"
+                  min="20"
+                  max="35"
+                  step="1"
+                  value="25"
+                />
+                <span class="field-hint">Range 20–35% of daily calories</span>
+              </label>
+            </div>
+
+            <div class="stat-row plan-stats">
+              <article class="stat">
+                <p class="stat-label">Daily intake</p>
+                <p class="stat-value">
+                  <span id="intake-value">—</span>
+                  <span class="stat-unit">kcal / day</span>
+                </p>
+                <p class="stat-note" id="intake-note">From your goal</p>
+              </article>
+              <article class="stat">
+                <p class="stat-label">Protein</p>
+                <p class="stat-value">
+                  <span id="protein-grams">—</span>
+                  <span class="stat-unit">g</span>
+                </p>
+                <p class="stat-note" id="protein-kcal-note">—</p>
+              </article>
+              <article class="stat">
+                <p class="stat-label">Fat</p>
+                <p class="stat-value">
+                  <span id="fat-grams">—</span>
+                  <span class="stat-unit">g</span>
+                </p>
+                <p class="stat-note" id="fat-kcal-note">—</p>
+              </article>
+              <article class="stat">
+                <p class="stat-label">Carbs</p>
+                <p class="stat-value">
+                  <span id="carb-grams">—</span>
+                  <span class="stat-unit">g</span>
+                </p>
+                <p class="stat-note" id="carb-kcal-note">—</p>
+              </article>
+            </div>
+
+            <div id="plan-notes" class="plan-notes" aria-live="polite"></div>
+
+            <div class="breakdown">
+              <h3>Plan calculation details</h3>
+              <ol id="plan-breakdown-list"></ol>
+            </div>
+          </div>
+        </section>
       </main>
 
       <footer class="site-footer">
         <p>
           Formulas: Mifflin–St Jeor (1990) and revised Harris–Benedict (Roza &amp; Shizgal, 1984).
-          Estimates only — not medical advice.
+          Macro plan uses WHO BMI bands and common RDA guidance. Estimates only — not medical advice.
         </p>
       </footer>
     </div>

@@ -4,28 +4,48 @@
   const LB_PER_KG = 2.2046226218;
   const CM_PER_IN = 2.54;
   const THEME_KEY = "tdee-theme";
+  const KCAL_PER_G_PROTEIN = 4;
+  const KCAL_PER_G_CARB = 4;
+  const KCAL_PER_G_FAT = 9;
+  const CARB_RDA_G = 130;
 
   const ACTIVITY = {
     sedentary: {
       label: "Sedentary",
       multiplier: 1.2,
       description: "little or no exercise",
+      proteinPerKg: 1.2,
     },
     light: {
       label: "Lightly active",
       multiplier: 1.375,
       description: "light exercise / sports 1–3 days / week",
+      proteinPerKg: 1.3,
     },
     moderate: {
       label: "Moderately active",
       multiplier: 1.55,
       description: "moderate exercise / sports 3–5 days / week",
+      proteinPerKg: 1.45,
     },
     very: {
       label: "Very active",
       multiplier: 1.725,
       description: "intensive exercise / sports 6–7 days / week",
+      proteinPerKg: 1.6,
     },
+  };
+
+  const GOAL_CALORIE_FACTOR = {
+    maintain: 1.0,
+    lose: 0.9,
+    gain: 1.1,
+  };
+
+  const GOAL_FAT_DEFAULT = {
+    maintain: 25,
+    lose: 20,
+    gain: 30,
   };
 
   const form = document.getElementById("tdee-form");
@@ -45,10 +65,31 @@
   const tdeeValue = document.getElementById("tdee-value");
   const tdeeNote = document.getElementById("tdee-note");
   const breakdownList = document.getElementById("breakdown-list");
+  const planJump = document.getElementById("plan-jump");
+  const planLocked = document.getElementById("plan-locked");
+  const planBody = document.getElementById("plan-body");
+  const proteinInput = document.getElementById("protein-per-kg");
+  const fatInput = document.getElementById("fat-percent");
+  const proteinDefaultHint = document.getElementById("protein-default-hint");
+  const fatDefaultHint = document.getElementById("fat-default-hint");
+  const bmiSummary = document.getElementById("bmi-summary");
+  const goalWarning = document.getElementById("goal-warning");
+  const intakeValue = document.getElementById("intake-value");
+  const intakeNote = document.getElementById("intake-note");
+  const proteinGrams = document.getElementById("protein-grams");
+  const proteinKcalNote = document.getElementById("protein-kcal-note");
+  const fatGrams = document.getElementById("fat-grams");
+  const fatKcalNote = document.getElementById("fat-kcal-note");
+  const carbGrams = document.getElementById("carb-grams");
+  const carbKcalNote = document.getElementById("carb-kcal-note");
+  const planNotes = document.getElementById("plan-notes");
+  const planBreakdownList = document.getElementById("plan-breakdown-list");
   const themeButtons = document.querySelectorAll(".theme-btn");
   const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
   let hasCalculated = false;
+  let lastCalc = null;
+  let suppressPlanDefaults = false;
 
   function getUnits() {
     const checked = form.querySelector('input[name="units"]:checked');
@@ -63,6 +104,11 @@
   function getFormula() {
     const checked = form.querySelector('input[name="formula"]:checked');
     return checked ? checked.value : "mifflin";
+  }
+
+  function getGoal() {
+    const checked = document.querySelector('input[name="goal"]:checked');
+    return checked ? checked.value : "maintain";
   }
 
   function updateUnitLabels() {
@@ -285,8 +331,8 @@
     });
   }
 
-  function renderBreakdown(steps) {
-    breakdownList.innerHTML = "";
+  function renderBreakdown(target, steps) {
+    target.innerHTML = "";
     steps.forEach((step) => {
       const li = document.createElement("li");
       const title = document.createElement("strong");
@@ -301,8 +347,214 @@
         code.textContent = step.formula;
         li.appendChild(code);
       }
-      breakdownList.appendChild(li);
+      target.appendChild(li);
     });
+  }
+
+  function classifyBmi(bmi) {
+    if (bmi < 18.5) {
+      return {
+        key: "underweight",
+        label: "Underweight",
+        range: "< 18.5",
+      };
+    }
+    if (bmi < 25) {
+      return {
+        key: "healthy",
+        label: "Healthy weight",
+        range: "18.5–24.9",
+      };
+    }
+    if (bmi < 30) {
+      return {
+        key: "overweight",
+        label: "Overweight",
+        range: "25.0–29.9",
+      };
+    }
+    return {
+      key: "obese",
+      label: "Obese",
+      range: "≥ 30.0",
+    };
+  }
+
+  function goalCautionMessage(goal, bmiInfo) {
+    if (goal === "lose" && bmiInfo.key === "underweight") {
+      return `Your BMI (${formatNumber(bmiInfo.bmi, 1)}) is in the underweight range (${bmiInfo.range}). Losing more weight may not be appropriate — consider confirming this goal with a qualified professional. The plan below still uses your selected goal.`;
+    }
+    if (
+      (goal === "lose" || goal === "gain") &&
+      bmiInfo.key === "healthy"
+    ) {
+      return `Your BMI (${formatNumber(bmiInfo.bmi, 1)}) is already in the healthy range (${bmiInfo.range}). Double-check that you really want to ${goal} weight. The plan below still uses your selected goal.`;
+    }
+    if (
+      goal === "gain" &&
+      (bmiInfo.key === "overweight" || bmiInfo.key === "obese")
+    ) {
+      return `Your BMI (${formatNumber(bmiInfo.bmi, 1)}) is in the ${bmiInfo.label.toLowerCase()} range (${bmiInfo.range}). Gaining more weight may not be appropriate — consider confirming this goal with a qualified professional. The plan below still uses your selected goal.`;
+    }
+    return "";
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function applyPlanDefaults({ activityKey, goal, resetProtein, resetFat }) {
+    suppressPlanDefaults = true;
+    if (resetProtein && activityKey && ACTIVITY[activityKey]) {
+      proteinInput.value = String(ACTIVITY[activityKey].proteinPerKg);
+      proteinDefaultHint.textContent = `(default ${ACTIVITY[activityKey].proteinPerKg})`;
+    }
+    if (resetFat && goal) {
+      fatInput.value = String(GOAL_FAT_DEFAULT[goal]);
+      fatDefaultHint.textContent = `(default ${GOAL_FAT_DEFAULT[goal]}%)`;
+    }
+    suppressPlanDefaults = false;
+  }
+
+  function lockPlan() {
+    lastCalc = null;
+    planLocked.hidden = false;
+    planBody.hidden = true;
+    planJump.hidden = true;
+    goalWarning.hidden = true;
+    goalWarning.textContent = "";
+    planNotes.innerHTML = "";
+    planBreakdownList.innerHTML = "";
+  }
+
+  function updatePlan() {
+    if (!lastCalc) {
+      lockPlan();
+      return;
+    }
+
+    const goal = getGoal();
+    let proteinPerKg = Number(proteinInput.value);
+    let fatPercent = Number(fatInput.value);
+
+    if (!Number.isFinite(proteinPerKg)) proteinPerKg = ACTIVITY[lastCalc.activityKey].proteinPerKg;
+    if (!Number.isFinite(fatPercent)) fatPercent = GOAL_FAT_DEFAULT[goal];
+
+    proteinPerKg = clamp(round(proteinPerKg, 2), 1.2, 1.6);
+    fatPercent = clamp(round(fatPercent, 0), 20, 35);
+    proteinInput.value = String(proteinPerKg);
+    fatInput.value = String(fatPercent);
+    proteinDefaultHint.textContent = `(activity default ${ACTIVITY[lastCalc.activityKey].proteinPerKg})`;
+    fatDefaultHint.textContent = `(goal default ${GOAL_FAT_DEFAULT[goal]}%)`;
+
+    const heightM = lastCalc.heightCm / 100;
+    const bmi = lastCalc.weightKg / (heightM * heightM);
+    const bmiInfo = { ...classifyBmi(bmi), bmi };
+    bmiSummary.textContent = `BMI ${formatNumber(bmi, 1)} · ${bmiInfo.label} (WHO ${bmiInfo.range}) · weight ${formatNumber(lastCalc.weightKg, 2)} kg · height ${formatNumber(lastCalc.heightCm, 1)} cm`;
+
+    const caution = goalCautionMessage(goal, bmiInfo);
+    if (caution) {
+      goalWarning.hidden = false;
+      goalWarning.textContent = caution;
+    } else {
+      goalWarning.hidden = true;
+      goalWarning.textContent = "";
+    }
+
+    const factor = GOAL_CALORIE_FACTOR[goal];
+    let intake = lastCalc.tdee * factor;
+    let flooredToBmr = false;
+    if (goal === "lose" && intake < lastCalc.bmr) {
+      intake = lastCalc.bmr;
+      flooredToBmr = true;
+    }
+    intake = round(intake, 1);
+
+    const proteinG = round(proteinPerKg * lastCalc.weightKg, 1);
+    const proteinKcal = round(proteinG * KCAL_PER_G_PROTEIN, 1);
+    const fatKcal = round(intake * (fatPercent / 100), 1);
+    const fatG = round(fatKcal / KCAL_PER_G_FAT, 1);
+    let carbKcal = round(intake - proteinKcal - fatKcal, 1);
+    let carbG = round(carbKcal / KCAL_PER_G_CARB, 1);
+    let macrosOverflow = false;
+
+    if (carbKcal < 0) {
+      macrosOverflow = true;
+      carbKcal = 0;
+      carbG = 0;
+    }
+
+    intakeValue.textContent = formatNumber(intake, 1);
+    intakeNote.textContent = flooredToBmr
+      ? `Lose target floored at BMR (${formatNumber(lastCalc.bmr, 1)} kcal)`
+      : `${goal.charAt(0).toUpperCase()}${goal.slice(1)} · TDEE × ${factor}`;
+    proteinGrams.textContent = formatNumber(proteinG, 1);
+    proteinKcalNote.textContent = `${formatNumber(proteinKcal, 1)} kcal · ${formatNumber(proteinPerKg, 2)} g/kg`;
+    fatGrams.textContent = formatNumber(fatG, 1);
+    fatKcalNote.textContent = `${formatNumber(fatKcal, 1)} kcal · ${formatNumber(fatPercent, 0)}%`;
+    carbGrams.textContent = formatNumber(carbG, 1);
+    carbKcalNote.textContent = `${formatNumber(carbKcal, 1)} kcal · remainder`;
+
+    planNotes.innerHTML = "";
+    if (flooredToBmr) {
+      appendCallout(
+        planNotes,
+        `A 10% deficit would be ${formatNumber(lastCalc.tdee * 0.9, 1)} kcal, which is below your BMR (${formatNumber(lastCalc.bmr, 1)} kcal). Intake is capped at BMR for this suggestion.`
+      );
+    }
+    if (macrosOverflow) {
+      appendCallout(
+        planNotes,
+        "Protein and fat calories exceed the daily intake target, so carbs are set to 0 g. Lower protein (g/kg) or fat (%) to free calories for carbs."
+      );
+    } else if (carbG < CARB_RDA_G) {
+      appendCallout(
+        planNotes,
+        `Suggested carbs (${formatNumber(carbG, 1)} g) are below the common carbohydrate RDA of ${CARB_RDA_G} g/day. This can happen on lower-calorie plans — consider adjusting fat % or protein if needed.`
+      );
+    }
+
+    const steps = [
+      {
+        title: "Goal calories",
+        detail:
+          goal === "maintain"
+            ? `Maintain → intake = TDEE = ${formatNumber(lastCalc.tdee, 1)} kcal`
+            : goal === "lose"
+              ? `Lose → intake = TDEE × 0.9${flooredToBmr ? ", floored at BMR" : ""} = ${formatNumber(intake, 1)} kcal`
+              : `Gain → intake = TDEE × 1.1 = ${formatNumber(intake, 1)} kcal`,
+        formula: flooredToBmr
+          ? `max(TDEE × 0.9, BMR) = max(${formatNumber(lastCalc.tdee * 0.9, 1)}, ${formatNumber(lastCalc.bmr, 1)})`
+          : `intake = ${formatNumber(lastCalc.tdee, 1)} × ${factor}`,
+      },
+      {
+        title: "Protein",
+        detail: `${formatNumber(proteinPerKg, 2)} g/kg × ${formatNumber(lastCalc.weightKg, 2)} kg = ${formatNumber(proteinG, 1)} g`,
+        formula: `${formatNumber(proteinG, 1)} g × ${KCAL_PER_G_PROTEIN} kcal/g = ${formatNumber(proteinKcal, 1)} kcal`,
+      },
+      {
+        title: "Fat",
+        detail: `${formatNumber(fatPercent, 0)}% of ${formatNumber(intake, 1)} kcal = ${formatNumber(fatKcal, 1)} kcal`,
+        formula: `${formatNumber(fatKcal, 1)} ÷ ${KCAL_PER_G_FAT} = ${formatNumber(fatG, 1)} g`,
+      },
+      {
+        title: "Carbs (remainder)",
+        detail: `${formatNumber(intake, 1)} − ${formatNumber(proteinKcal, 1)} − ${formatNumber(fatKcal, 1)} = ${formatNumber(carbKcal, 1)} kcal`,
+        formula: `${formatNumber(carbKcal, 1)} ÷ ${KCAL_PER_G_CARB} = ${formatNumber(carbG, 1)} g`,
+      },
+    ];
+    renderBreakdown(planBreakdownList, steps);
+
+    planLocked.hidden = true;
+    planBody.hidden = false;
+    planJump.hidden = false;
+  }
+
+  function appendCallout(container, text) {
+    const div = document.createElement("div");
+    div.className = "callout callout-warn";
+    div.textContent = text;
+    container.appendChild(div);
   }
 
   function calculate() {
@@ -310,6 +562,7 @@
       results.hidden = true;
       resultsEmpty.hidden = false;
       highlightActivity("");
+      lockPlan();
       return false;
     }
 
@@ -383,16 +636,34 @@
         detail: `${formatNumber(bmrRounded, 1)} × ${activity.multiplier} = ${formatNumber(tdee, 1)} kcal / day`,
       });
       highlightActivity(activityKey);
+
+      const activityChanged =
+        !lastCalc || lastCalc.activityKey !== activityKey;
+      lastCalc = {
+        bmr: bmrRounded,
+        tdee,
+        weightKg,
+        heightCm,
+        activityKey,
+      };
+      applyPlanDefaults({
+        activityKey,
+        goal: getGoal(),
+        resetProtein: activityChanged,
+        resetFat: false,
+      });
+      updatePlan();
     } else {
       tdeeStat.hidden = true;
       steps.push({
         title: "TDEE",
-        detail: "Select an activity level to calculate TDEE (BMR × multiplier).",
+        detail: "Select an activity level to calculate TDEE and unlock the calorie plan.",
       });
       highlightActivity("");
+      lockPlan();
     }
 
-    renderBreakdown(steps);
+    renderBreakdown(breakdownList, steps);
     return true;
   }
 
@@ -459,8 +730,6 @@
 
     if (hasCalculated) {
       calculate();
-    } else if (event.target.id === "activity" && activitySelect.value) {
-      // no-op until first calculate
     }
   });
 
@@ -487,9 +756,47 @@
       tdeeStat.hidden = true;
       breakdownList.innerHTML = "";
       highlightActivity("");
+      document.querySelector('input[name="goal"][value="maintain"]').checked = true;
+      applyPlanDefaults({
+        activityKey: "sedentary",
+        goal: "maintain",
+        resetProtein: true,
+        resetFat: true,
+      });
+      lockPlan();
     }, 0);
+  });
+
+  document.querySelectorAll('input[name="goal"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      if (!lastCalc) return;
+      applyPlanDefaults({
+        activityKey: lastCalc.activityKey,
+        goal: getGoal(),
+        resetProtein: false,
+        resetFat: true,
+      });
+      updatePlan();
+    });
+  });
+
+  proteinInput.addEventListener("input", () => {
+    if (suppressPlanDefaults || !lastCalc) return;
+    updatePlan();
+  });
+
+  fatInput.addEventListener("input", () => {
+    if (suppressPlanDefaults || !lastCalc) return;
+    updatePlan();
   });
 
   initTheme();
   updateUnitLabels();
+  applyPlanDefaults({
+    activityKey: "sedentary",
+    goal: "maintain",
+    resetProtein: true,
+    resetFat: true,
+  });
+  lockPlan();
 })();

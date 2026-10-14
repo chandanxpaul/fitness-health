@@ -21,6 +21,9 @@ html[data-theme="light"] {
   --accent-ink: #0a4638;
   --danger: #a12622;
   --danger-soft: #fdeceb;
+  --warn: #8a5a10;
+  --warn-soft: #fff3d9;
+  --warn-border: #d4a017;
   --highlight: #c8edd9;
   --highlight-border: #1f8a6a;
   --input-bg: #ffffff;
@@ -43,6 +46,9 @@ html[data-theme="dark"] {
   --accent-ink: #d7fff0;
   --danger: #ff8b84;
   --danger-soft: #3a1c1a;
+  --warn: #f0c36a;
+  --warn-soft: #3a2e14;
+  --warn-border: #d4a017;
   --highlight: #1d4337;
   --highlight-border: #4fd0a8;
   --input-bg: #101a16;
@@ -159,7 +165,8 @@ body {
     grid-template-columns: 1.05fr 0.95fr;
     grid-template-areas:
       "form results"
-      "table table";
+      "table table"
+      "plan plan";
   }
 
   .form-panel {
@@ -172,6 +179,10 @@ body {
 
   .table-panel {
     grid-area: table;
+  }
+
+  .plan-panel {
+    grid-area: plan;
   }
 }
 
@@ -195,6 +206,94 @@ body {
 
 .table-panel {
   animation-delay: 0.18s;
+}
+
+.plan-panel {
+  animation-delay: 0.24s;
+}
+
+.segmented-goals {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 560px) {
+  .segmented-goals {
+    grid-template-columns: 1fr;
+  }
+}
+
+.plan-jump {
+  margin: 1.15rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.plan-jump a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.plan-jump a:hover {
+  text-decoration: underline;
+}
+
+.bmi-summary {
+  margin: 0 0 0.85rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel-solid);
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
+.callout {
+  margin: 0 0 1rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.callout-warn {
+  border: 1px solid var(--warn-border);
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.plan-controls {
+  margin-bottom: 1.1rem;
+}
+
+@media (min-width: 560px) {
+  .plan-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.plan-stats {
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (min-width: 720px) {
+  .plan-stats {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.plan-notes {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0 0 1rem;
+}
+
+.plan-notes:empty {
+  display: none;
+}
+
+.plan-notes .callout {
+  margin: 0;
 }
 
 .panel h2 {
