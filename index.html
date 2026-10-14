@@ -37,8 +37,8 @@
           <p class="brand-mark">Fitness & Health</p>
           <h1>TDEE Calculator</h1>
           <p class="lede">
-            Estimate your basal metabolic rate and daily calorie needs using the
-            revised Harris–Benedict equations.
+            Estimate your basal metabolic rate and daily calorie needs. Choose
+            Mifflin–St Jeor (default) or revised Harris–Benedict.
           </p>
         </div>
         <div class="theme-control" role="group" aria-label="Color theme">
@@ -69,6 +69,26 @@
                 <label class="segment">
                   <input type="radio" name="units" value="imperial" />
                   <span>Imperial (lb / in)</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>BMR formula</legend>
+              <div class="segmented segmented-formulas" role="radiogroup" aria-label="BMR formula">
+                <label class="segment">
+                  <input type="radio" name="formula" value="mifflin" checked />
+                  <span>
+                    Mifflin–St Jeor
+                    <small>Recommended default</small>
+                  </span>
+                </label>
+                <label class="segment">
+                  <input type="radio" name="formula" value="harris" />
+                  <span>
+                    Harris–Benedict
+                    <small>Revised 1984</small>
+                  </span>
                 </label>
               </div>
             </fieldset>
@@ -171,7 +191,7 @@
                   <span id="bmr-value">—</span>
                   <span class="stat-unit">kcal / day</span>
                 </p>
-                <p class="stat-note">Calories burned at rest</p>
+                <p class="stat-note" id="bmr-note">Calories burned at rest</p>
               </article>
               <article class="stat" id="tdee-stat" hidden>
                 <p class="stat-label">TDEE</p>
@@ -233,7 +253,8 @@
 
       <footer class="site-footer">
         <p>
-          Formulas: revised Harris–Benedict (Roza &amp; Shizgal, 1984). Estimates only — not medical advice.
+          Formulas: Mifflin–St Jeor (1990) and revised Harris–Benedict (Roza &amp; Shizgal, 1984).
+          Estimates only — not medical advice.
         </p>
       </footer>
     </div>
