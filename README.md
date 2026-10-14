@@ -1,6 +1,6 @@
 # Fitness Health — TDEE Calculator
 
-A static single-page app that estimates **BMR** (basal metabolic rate) and **TDEE** (total daily energy expenditure) using the revised Harris–Benedict equations (Roza & Shizgal, 1984).
+A static single-page app that estimates **BMR** (basal metabolic rate) and **TDEE** (total daily energy expenditure). Choose **Mifflin–St Jeor** (default) or revised **Harris–Benedict** (Roza & Shizgal, 1984).
 
 ## Open the app
 
@@ -20,7 +20,16 @@ Then visit `http://localhost:8080`.
 
 ## What it calculates
 
-### BMR
+### BMR formulas
+
+**Mifflin–St Jeor (default)**
+
+| Sex | Formula |
+| --- | --- |
+| Men | `BMR = (10 × kg) + (6.25 × cm) − (5 × age) + 5` |
+| Women | `BMR = (10 × kg) + (6.25 × cm) − (5 × age) − 161` |
+
+**Harris–Benedict (revised)**
 
 | Sex | Formula |
 | --- | --- |
@@ -29,7 +38,7 @@ Then visit `http://localhost:8080`.
 
 ### TDEE
 
-`TDEE = BMR × activity multiplier` when an activity level is selected.
+`TDEE = BMR × activity multiplier` using the BMR from your selected formula.
 
 | Activity level | Description | Multiplier |
 | --- | --- | --- |
@@ -40,8 +49,9 @@ Then visit `http://localhost:8080`.
 
 ## Features
 
+- Formula picker: Mifflin–St Jeor (default) or Harris–Benedict
 - Metric (kg / cm) by default, with imperial (lb / in) and automatic conversion
-- Full calculation breakdown for verification
+- Full calculation breakdown, plus the other formula’s BMR for comparison
 - Activity reference table with row highlight for the selected level
 - Theme: **System** (default), Light, or Dark — preference stored in `localStorage`
 
@@ -49,7 +59,9 @@ Then visit `http://localhost:8080`.
 
 Male, 80 kg, 180 cm, age 30, lightly active:
 
-- BMR ≈ **1853.6** kcal/day  
-- TDEE ≈ **2548.7** kcal/day (× 1.375)
+| Formula | BMR | TDEE (× 1.375) |
+| --- | ---: | ---: |
+| Mifflin–St Jeor | **1780.0** | **2447.5** |
+| Harris–Benedict | **1853.6** | **2548.7** |
 
 Estimates only — not medical advice.

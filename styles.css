@@ -266,6 +266,27 @@ legend,
     color var(--transition);
 }
 
+.segment span small {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.segment input:checked + span small {
+  color: inherit;
+  opacity: 0.85;
+}
+
+.segmented-formulas .segment span {
+  min-height: 3.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
 .segment input:checked + span {
   border-color: var(--accent);
   background: var(--accent-soft);

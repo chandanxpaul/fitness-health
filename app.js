@@ -40,6 +40,7 @@
   const resultsEmpty = document.getElementById("results-empty");
   const results = document.getElementById("results");
   const bmrValue = document.getElementById("bmr-value");
+  const bmrNote = document.getElementById("bmr-note");
   const tdeeStat = document.getElementById("tdee-stat");
   const tdeeValue = document.getElementById("tdee-value");
   const tdeeNote = document.getElementById("tdee-note");
@@ -57,6 +58,11 @@
   function getSex() {
     const checked = form.querySelector('input[name="sex"]:checked');
     return checked ? checked.value : "male";
+  }
+
+  function getFormula() {
+    const checked = form.querySelector('input[name="formula"]:checked');
+    return checked ? checked.value : "mifflin";
   }
 
   function updateUnitLabels() {
@@ -186,21 +192,91 @@
     };
   }
 
-  function computeBmr(sex, weightKg, heightCm, age) {
+  function computeMifflin(sex, weightKg, heightCm, age) {
+    const base = 10 * weightKg + 6.25 * heightCm - 5 * age;
+    const sexOffset = sex === "male" ? 5 : -161;
+    return {
+      key: "mifflin",
+      name: "Mifflin–St Jeor",
+      bmr: base + sexOffset,
+      formula:
+        sex === "male"
+          ? "BMR = (10 × weight kg) + (6.25 × height cm) − (5 × age) + 5"
+          : "BMR = (10 × weight kg) + (6.25 × height cm) − (5 × age) − 161",
+      kind: "mifflin",
+      sexOffset,
+    };
+  }
+
+  function computeHarris(sex, weightKg, heightCm, age) {
     if (sex === "male") {
       return {
+        key: "harris",
+        name: "Harris–Benedict (revised)",
         bmr: 88.362 + 13.397 * weightKg + 4.799 * heightCm - 5.677 * age,
         formula:
           "BMR = 88.362 + (13.397 × weight kg) + (4.799 × height cm) − (5.677 × age)",
+        kind: "harris",
         constants: { base: 88.362, w: 13.397, h: 4.799, a: 5.677 },
       };
     }
     return {
+      key: "harris",
+      name: "Harris–Benedict (revised)",
       bmr: 447.593 + 9.247 * weightKg + 3.098 * heightCm - 4.33 * age,
       formula:
         "BMR = 447.593 + (9.247 × weight kg) + (3.098 × height cm) − (4.330 × age)",
+      kind: "harris",
       constants: { base: 447.593, w: 9.247, h: 3.098, a: 4.33 },
     };
+  }
+
+  function computeBmr(formulaKey, sex, weightKg, heightCm, age) {
+    return formulaKey === "harris"
+      ? computeHarris(sex, weightKg, heightCm, age)
+      : computeMifflin(sex, weightKg, heightCm, age);
+  }
+
+  function appendFormulaSteps(steps, result, weightKg, heightCm, age) {
+    if (result.kind === "mifflin") {
+      const wTerm = 10 * weightKg;
+      const hTerm = 6.25 * heightCm;
+      const aTerm = 5 * age;
+      const offsetLabel =
+        result.sexOffset >= 0
+          ? `+ ${result.sexOffset}`
+          : `− ${Math.abs(result.sexOffset)}`;
+      steps.push({
+        title: `BMR formula (${result.name})`,
+        formula: result.formula,
+      });
+      steps.push({
+        title: "Substituted values",
+        formula: `BMR = (10 × ${formatNumber(weightKg, 2)}) + (6.25 × ${formatNumber(heightCm, 2)}) − (5 × ${formatNumber(age, 0)}) ${offsetLabel}`,
+      });
+      steps.push({
+        title: "Intermediate terms",
+        formula: `${formatNumber(wTerm, 3)} + ${formatNumber(hTerm, 3)} − ${formatNumber(aTerm, 3)} ${offsetLabel} = ${formatNumber(result.bmr, 3)}`,
+      });
+      return;
+    }
+
+    const { constants } = result;
+    const wTerm = constants.w * weightKg;
+    const hTerm = constants.h * heightCm;
+    const aTerm = constants.a * age;
+    steps.push({
+      title: `BMR formula (${result.name})`,
+      formula: result.formula,
+    });
+    steps.push({
+      title: "Substituted values",
+      formula: `BMR = ${constants.base} + (${constants.w} × ${formatNumber(weightKg, 2)}) + (${constants.h} × ${formatNumber(heightCm, 2)}) − (${constants.a} × ${formatNumber(age, 0)})`,
+    });
+    steps.push({
+      title: "Intermediate terms",
+      formula: `${constants.base} + ${formatNumber(wTerm, 3)} + ${formatNumber(hTerm, 3)} − ${formatNumber(aTerm, 3)} = ${formatNumber(result.bmr, 3)}`,
+    });
   }
 
   function highlightActivity(key) {
@@ -239,13 +315,17 @@
 
     const units = getUnits();
     const sex = getSex();
+    const formulaKey = getFormula();
     const age = Number(ageInput.value);
     const weight = Number(weightInput.value);
     const height = Number(heightInput.value);
     const activityKey = activitySelect.value;
     const { weightKg, heightCm, converted } = toMetric(units, weight, height);
-    const { bmr, formula, constants } = computeBmr(sex, weightKg, heightCm, age);
-    const bmrRounded = round(bmr, 1);
+    const selected = computeBmr(formulaKey, sex, weightKg, heightCm, age);
+    const alternateKey = formulaKey === "mifflin" ? "harris" : "mifflin";
+    const alternate = computeBmr(alternateKey, sex, weightKg, heightCm, age);
+    const bmrRounded = round(selected.bmr, 1);
+    const alternateRounded = round(alternate.bmr, 1);
 
     const steps = [];
 
@@ -257,6 +337,11 @@
           : `${sex === "male" ? "Male" : "Female"}, ${formatNumber(age, 0)} years, ${formatNumber(weight, 1)} lb, ${formatNumber(height, 1)} in`,
     });
 
+    steps.push({
+      title: "Selected formula",
+      detail: selected.name,
+    });
+
     if (converted) {
       steps.push({
         title: "Unit conversion",
@@ -265,35 +350,26 @@
       });
     }
 
-    const sexLabel = sex === "male" ? "Men" : "Women";
-    steps.push({
-      title: `${sexLabel} BMR formula (revised Harris–Benedict)`,
-      formula,
-    });
+    appendFormulaSteps(steps, selected, weightKg, heightCm, age);
 
-    const wTerm = constants.w * weightKg;
-    const hTerm = constants.h * heightCm;
-    const aTerm = constants.a * age;
-    steps.push({
-      title: "Substituted values",
-      formula: `BMR = ${constants.base} + (${constants.w} × ${formatNumber(weightKg, 2)}) + (${constants.h} × ${formatNumber(heightCm, 2)}) − (${constants.a} × ${formatNumber(age, 0)})`,
-    });
-    steps.push({
-      title: "Intermediate terms",
-      formula: `${constants.base} + ${formatNumber(wTerm, 3)} + ${formatNumber(hTerm, 3)} − ${formatNumber(aTerm, 3)} = ${formatNumber(bmr, 3)}`,
-    });
     steps.push({
       title: "BMR result",
-      detail: `${formatNumber(bmrRounded, 1)} kcal / day`,
+      detail: `${formatNumber(bmrRounded, 1)} kcal / day (${selected.name})`,
+    });
+
+    steps.push({
+      title: "Other formula (for comparison)",
+      detail: `${alternate.name}: ${formatNumber(alternateRounded, 1)} kcal / day — not used for TDEE`,
     });
 
     resultsEmpty.hidden = true;
     results.hidden = false;
     bmrValue.textContent = formatNumber(bmrRounded, 1);
+    bmrNote.textContent = `${selected.name} · calories burned at rest`;
 
     if (activityKey && ACTIVITY[activityKey]) {
       const activity = ACTIVITY[activityKey];
-      const tdee = round(bmr * activity.multiplier, 1);
+      const tdee = round(selected.bmr * activity.multiplier, 1);
       tdeeStat.hidden = false;
       tdeeValue.textContent = formatNumber(tdee, 1);
       tdeeNote.textContent = `${activity.label} maintenance`;
